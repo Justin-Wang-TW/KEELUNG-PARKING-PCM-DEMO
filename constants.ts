@@ -7,7 +7,7 @@ import { Station, StationCode, Task, TaskStatus, User, UserRole } from './types'
 export const APP_CONFIG = {
   SHEET_ID: '1LpG_l0jXduLXVpybRFQIs78WjAdq7tTueB_NvSTiIUU',
   // 注意：此處 URL 應與 App.tsx 中使用的 API 位址保持一致
-  SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbyuwvpjQCKFmcXJ4e47CzzsAxpSu0T2NFCcCGyiaY7LIy4dsQI8B5eqN9D374dCV1gV/exec'
+  SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbz24IUah-cmxaqPMk27z0-eBRqjYvLKFx6QT0MyrVGGWYxPeU51C1eOFw_7ZkYs5K8e/exec'
 };
 
 /**
