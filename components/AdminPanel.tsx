@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { User, AuditLog, UserRole, StationCode, Task } from '../types';
-import { Shield, Users, FileText, Search, Activity, Lock, Unlock, Check, X, ListTodo, Building2, Trash2 } from 'lucide-react';
+import { Shield, Users, FileText, Search, Activity, Lock, Unlock, Check, X, ListTodo } from 'lucide-react';
 import { STATIONS } from '../constants';
 import TaskList from './TaskList';
 
@@ -8,8 +8,8 @@ interface AdminPanelProps {
   users: User[];
   logs: AuditLog[];
   onUpdateUser: (email: string, updates: Partial<User>) => void;
-  onDeleteUser: (email: string) => void;
   currentUser: User;
+  // Props for TaskList integration
   tasks: Task[];
   onEditTask: (task: Task) => void;
   onCreateTask: () => void;
@@ -20,7 +20,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   users, 
   logs, 
   onUpdateUser,
-  onDeleteUser,
   currentUser,
   tasks,
   onEditTask,
@@ -31,10 +30,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [userSearch, setUserSearch] = useState('');
   const [logSearch, setLogSearch] = useState('');
   
+  // State for Approval Modal
   const [approvingUser, setApprovingUser] = useState<User | null>(null);
   const [approvalRole, setApprovalRole] = useState<UserRole>(UserRole.USER);
   const [approvalStation, setApprovalStation] = useState<StationCode | 'ALL'>(StationCode.BAIFU);
 
+  // Strict check
   if (currentUser.role !== UserRole.ADMIN) {
     return (
       <div className="flex flex-col items-center justify-center h-96 text-gray-500 bg-white rounded-xl shadow-sm">
@@ -59,13 +60,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         assignedStation: approvalStation,
         isActive: true
       });
-      setApprovingUser(null);
-    }
-  };
-
-  const handleRejectUser = () => {
-    if (approvingUser && window.confirm(`確定要否決並刪除 ${approvingUser.name} 的申請嗎？`)) {
-      onDeleteUser(approvingUser.email);
       setApprovingUser(null);
     }
   };
@@ -119,6 +113,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         </div>
       </div>
 
+      {/* Task List Tab (Restored) */}
       {activeTab === 'tasks' && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
            <div className="mb-4 bg-blue-50 border-l-4 border-blue-500 p-4">
@@ -136,61 +131,33 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         </div>
       )}
 
+      {/* User Management Tab */}
       {activeTab === 'users' && (
         <div className="space-y-6">
+          {/* Pending Approvals Section */}
           {pendingUsers.length > 0 && (
             <div className="bg-orange-50 rounded-xl shadow-sm border border-orange-200 overflow-hidden">
-              <div className="p-4 border-b border-orange-200 bg-orange-100 flex items-center justify-between">
-                <div className="flex items-center">
-                   <Shield className="w-5 h-5 mr-2 text-orange-600" />
-                   <h3 className="font-bold text-orange-800">待審核申請 ({pendingUsers.length})</h3>
-                </div>
+              <div className="p-4 border-b border-orange-200 bg-orange-100 flex items-center">
+                <Shield className="w-5 h-5 mr-2 text-orange-600" />
+                <h3 className="font-bold text-orange-800">待審核申請 ({pendingUsers.length})</h3>
               </div>
               <div className="p-4">
                  <table className="w-full text-left text-sm">
-                   <thead className="text-xs text-orange-600 uppercase bg-orange-100/50 border-b border-orange-200">
-                      <tr>
-                         <th className="px-2 py-2">申請人</th>
-                         <th className="px-2 py-2">任職單位</th>
-                         <th className="px-2 py-2 text-right">操作</th>
-                      </tr>
-                   </thead>
                    <tbody>
                      {pendingUsers.map(user => (
-                       <tr key={user.email} className="border-b border-orange-100 last:border-0 hover:bg-orange-50/50">
-                         <td className="py-3 px-2 font-medium text-gray-800">
-                            {user.name}
-                            <span className="block text-xs text-gray-500 font-normal">{user.email}</span>
-                         </td>
-                         <td className="py-3 px-2">
-                            {user.organization ? (
-                               <span className="flex items-center text-gray-700">
-                                 <Building2 className="w-3 h-3 mr-1 text-gray-400" />
-                                 {user.organization}
-                               </span>
-                            ) : <span className="text-gray-400 italic">未填寫</span>}
-                         </td>
-                         <td className="py-3 px-2 text-right space-x-2">
-                           <button 
-                             onClick={() => {
-                               if (window.confirm(`確定要否決 ${user.name} 的申請嗎？`)) {
-                                 onDeleteUser(user.email);
-                               }
-                             }}
-                             className="bg-white border border-red-200 text-red-600 px-3 py-1.5 rounded-md text-xs hover:bg-red-50 shadow-sm transition-colors"
-                             title="否決申請"
-                           >
-                             否決
-                           </button>
+                       <tr key={user.email} className="border-b border-orange-100 last:border-0">
+                         <td className="py-3 px-2 font-medium text-gray-800">{user.name}</td>
+                         <td className="py-3 px-2 text-gray-600">{user.email}</td>
+                         <td className="py-3 px-2 text-right">
                            <button 
                              onClick={() => {
                                setApprovingUser(user);
-                               setApprovalRole(UserRole.MANAGER);
-                               setApprovalStation(STATIONS[0].code); 
+                               setApprovalRole(UserRole.MANAGER); // Default
+                               setApprovalStation(STATIONS[0].code); // Default
                              }}
-                             className="bg-green-600 text-white px-3 py-1.5 rounded-md text-xs hover:bg-green-700 shadow-sm transition-colors"
+                             className="bg-green-600 text-white px-3 py-1.5 rounded-md text-xs hover:bg-green-700 shadow-sm"
                            >
-                             審核 / 分派
+                             審核 / 分派權限
                            </button>
                          </td>
                        </tr>
@@ -201,6 +168,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             </div>
           )}
 
+          {/* Active Users Table */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             <div className="p-4 border-b flex items-center justify-between bg-gray-50">
               <h3 className="font-bold text-gray-700">正式人員清單</h3>
@@ -220,7 +188,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 <thead className="bg-gray-50 border-b">
                   <tr>
                     <th className="px-6 py-3 font-semibold text-gray-600">姓名 / Email</th>
-                    <th className="px-6 py-3 font-semibold text-gray-600">單位 / 角色</th>
+                    <th className="px-6 py-3 font-semibold text-gray-600">角色</th>
                     <th className="px-6 py-3 font-semibold text-gray-600">負責場站</th>
                     <th className="px-6 py-3 font-semibold text-gray-600">狀態</th>
                     <th className="px-6 py-3 font-semibold text-gray-600 text-right">操作</th>
@@ -234,12 +202,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         <div className="text-gray-500 text-xs">{user.email}</div>
                       </td>
                       <td className="px-6 py-4">
-                        {user.organization && (
-                           <div className="text-xs text-gray-500 mb-1 flex items-center">
-                              <Building2 className="w-3 h-3 mr-1" />
-                              {user.organization}
-                           </div>
-                        )}
                         <select 
                           value={user.role}
                           onChange={(e) => onUpdateUser(user.email, { role: e.target.value as UserRole })}
@@ -269,7 +231,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                            {user.isActive ? '啟用中' : '已停用'}
                          </span>
                       </td>
-                      <td className="px-6 py-4 text-right flex justify-end space-x-2">
+                      <td className="px-6 py-4 text-right">
                          <button
                            onClick={() => onUpdateUser(user.email, { isActive: !user.isActive })}
                            className={`p-2 rounded-lg transition-colors ${
@@ -281,17 +243,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                          >
                            {user.isActive ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
                          </button>
-                         <button
-                           onClick={() => {
-                             if(window.confirm(`確定要刪除使用者 ${user.name} 嗎？此動作無法復原。`)) {
-                               onDeleteUser(user.email);
-                             }
-                           }}
-                           className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                           title="刪除使用者"
-                         >
-                           <Trash2 className="w-4 h-4" />
-                         </button>
                       </td>
                     </tr>
                   ))}
@@ -302,8 +253,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         </div>
       )}
 
+      {/* Logs Tab */}
       {activeTab === 'logs' && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+           {/* ... Log table content remains same as previous ... */}
            <div className="p-4 border-b flex items-center justify-between bg-gray-50">
             <h3 className="font-bold text-gray-700 flex items-center">
               <Activity className="w-4 h-4 mr-2 text-gray-500"/>
@@ -347,6 +300,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         </div>
       )}
 
+      {/* Approval Modal */}
       {approvingUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-sm animate-fade-in">
@@ -358,11 +312,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                <div>
                  <label className="text-xs font-bold text-gray-500 block mb-1">申請人</label>
                  <p className="font-medium">{approvingUser.name} ({approvingUser.email})</p>
-                 {approvingUser.organization && (
-                    <p className="text-sm text-gray-600 mt-1 flex items-center">
-                       <Building2 className="w-3 h-3 mr-1"/> {approvingUser.organization}
-                    </p>
-                 )}
                </div>
                
                <div>
@@ -390,20 +339,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                  </select>
                </div>
 
-               <div className="flex space-x-2 mt-4">
-                 <button 
-                   onClick={handleRejectUser}
-                   className="flex-1 py-2 bg-white border border-red-300 text-red-600 rounded hover:bg-red-50 font-medium"
-                 >
-                   否決申請
-                 </button>
-                 <button 
-                   onClick={handleApproveSubmit}
-                   className="flex-[2] py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-medium"
-                 >
-                   確認核准
-                 </button>
-               </div>
+               <button 
+                 onClick={handleApproveSubmit}
+                 className="w-full py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-medium mt-4"
+               >
+                 確認核准並啟用
+               </button>
              </div>
           </div>
         </div>
