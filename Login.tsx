@@ -1,115 +1,83 @@
 import React, { useState, useEffect } from 'react';
-import { User, UserRole, StationCode } from '../types';
-import { STATIONS } from '../constants';
-import { Car, Loader2, UserPlus, LogIn, AlertCircle, Eye, EyeOff, KeyRound } from 'lucide-react';
+import { User, UserRole } from '../types';
+import { STATIONS, APP_CONFIG } from '../constants';
+import { Car, Loader2, UserPlus, LogIn, AlertCircle, Eye, EyeOff, Building2 } from 'lucide-react';
 
 interface LoginProps {
   onLogin: (user: User) => void;
-  onRegister: (name: string, email: string) => void;
-  onForgotPassword: (email: string) => void; // 新增：忘記密碼處理
+  onRegister: (name: string, email: string, organization: string) => void; // 增加 organization 參數
+  onForgotPassword: (email: string) => void;
   users: User[];
 }
 
 const Login: React.FC<LoginProps> = ({ onLogin, onRegister, onForgotPassword, users }) => {
   const [mode, setMode] = useState<'LOGIN' | 'REGISTER'>('LOGIN');
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState(''); // 新增：密碼狀態
+  const [password, setPassword] = useState('');
   const [name, setName] = useState('');
-  const [showPassword, setShowPassword] = useState(false); // 新增：顯示密碼切換
+  const [organization, setOrganization] = useState(''); // 新增：任職單位狀態
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
-  // 自動登入邏輯 (維持原本 GAS 環境檢查)
-  useEffect(() => {
-    if (window.google?.script?.run) {
-      setIsLoading(true);
-      window.google.script.run
-        .withSuccessHandler((response: any) => {
-          if (response.success) {
-            onLogin({
-              ...response.user,
-              assignedStation: response.user.station === '全部' ? 'ALL' : STATIONS.find(s => s.name === response.user.station)?.code || 'ALL',
-            });
-          } else {
-            setIsLoading(false);
-          }
-        })
-        .withFailureHandler((err: any) => {
-          console.error(err);
-          setIsLoading(false);
-        })
-        .checkUserAuth();
-    }
-  }, [onLogin]);
-
-  const handleLogin = (e: React.FormEvent) => {
+  // 1. 處理登入：改為正式 API 呼叫
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
     setIsLoading(true);
 
-    setTimeout(() => {
-      // 1. 尋找使用者
-      const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+    try {
+      const response = await fetch(APP_CONFIG.SCRIPT_URL, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'checkUserAuth',
+          userEmail: email.trim(),
+          password: password
+        })
+      });
 
-      if (!user) {
-        setErrorMsg('找不到此 Email，請先申請帳號。');
-        setIsLoading(false);
-        return;
-      }
+      const result = await response.json();
 
-      // 2. 帳號狀態檢查
-      if (!user.isActive) {
-        setErrorMsg('您的帳號已被停用，請聯繫管理員。');
-        setIsLoading(false);
-        return;
-      }
-
-      if (user.role === UserRole.PENDING) {
-        setErrorMsg('您的帳號正在審核中，請稍候。');
-        setIsLoading(false);
-        return;
-      }
-
-      // 3. 密碼驗證 (假設後端傳來的 user.password 是雜湊值)
-      // 注意：前端比對雜湊通常需要呼叫後端 API，這裡模擬驗證過程
-      // 如果是在本地測試，建議增加一個欄位判斷
-      if (user.password !== password) { 
-        // 這裡如果是正式環境，應使用後端提供的 API 進行雜湊比對
-        setErrorMsg('密碼錯誤，請重新輸入。');
-        setIsLoading(false);
-        return;
-      }
-
-      // 4. 判斷是否為初次登入 (需要強制修改密碼)
-      if (user.needsPasswordChange) {
-        // 你可以在這裡觸發一個特殊的狀態，或傳遞資訊給父組件
-        // 為了簡單起見，我們將 user 傳回，由 App.tsx 判斷是否開啟修改密碼彈窗
-        onLogin({ ...user, isFirstLoginAttempt: true });
+      if (result.success) {
+        // 登入成功，將後端回傳的完整 User 物件傳回 App.tsx
+        onLogin(result.user);
       } else {
-        onLogin(user);
+        // 登入失敗，顯示後端回傳的具體原因
+        setErrorMsg(result.msg || '登入失敗，請檢查帳號密碼。');
       }
-      
+    } catch (err) {
+      setErrorMsg('連線失敗，請檢查網路或 API 設定。');
+      console.error("Login Error:", err);
+    } finally {
       setIsLoading(false);
-    }, 800);
+    }
   };
 
+  // 2. 處理註冊：包含組織單位
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
     setSuccessMsg('');
     setIsLoading(true);
 
-    setTimeout(() => {
-      const existingUser = users.find(u => u.email.toLowerCase() === email.toLowerCase());
-      if (existingUser) {
-        setErrorMsg('此 Email 已被註冊。');
-      } else {
-        onRegister(name, email);
-        setSuccessMsg('申請已送出！管理員核准後會寄發預設密碼。');
-        setMode('LOGIN');
-      }
+    // 先在前端做基礎檢查
+    const existingUser = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+    if (existingUser) {
+      setErrorMsg('此 Email 已被註冊。');
       setIsLoading(false);
+      return;
+    }
+
+    // 模擬網路延遲後送出申請
+    setTimeout(() => {
+      onRegister(name, email, organization);
+      setSuccessMsg('申請已送出！管理員核准後會寄發初始密碼。');
+      setMode('LOGIN');
+      setIsLoading(false);
+      // 清空註冊資料
+      setName('');
+      setOrganization('');
     }, 800);
   };
 
@@ -142,7 +110,6 @@ const Login: React.FC<LoginProps> = ({ onLogin, onRegister, onForgotPassword, us
 
         {mode === 'LOGIN' ? (
           <form onSubmit={handleLogin} className="space-y-4">
-            {/* Email 欄位 */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">電子郵件 (Email)</label>
               <input 
@@ -155,7 +122,6 @@ const Login: React.FC<LoginProps> = ({ onLogin, onRegister, onForgotPassword, us
               />
             </div>
 
-            {/* 密碼欄位 - 新增 */}
             <div>
               <div className="flex justify-between mb-1">
                 <label className="block text-sm font-medium text-gray-700">密碼</label>
@@ -205,10 +171,8 @@ const Login: React.FC<LoginProps> = ({ onLogin, onRegister, onForgotPassword, us
             </div>
           </form>
         ) : (
-          /* 註冊表單省略，維持與原本一致，或增加說明 */
           <form onSubmit={handleRegister} className="space-y-4">
-             {/* ... 保持原本的註冊 Input 結構 ... */}
-             <div>
+            <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">顯示名稱 (Name)</label>
               <input 
                 type="text" 
@@ -218,6 +182,20 @@ const Login: React.FC<LoginProps> = ({ onLogin, onRegister, onForgotPassword, us
                 value={name}
                 onChange={e => setName(e.target.value)}
               />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">任職單位 (Organization)</label>
+              <div className="relative">
+                <Building2 className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                <input 
+                  type="text" 
+                  required
+                  className="w-full p-2.5 pl-10 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  placeholder="例如：XX停車場公司"
+                  value={organization}
+                  onChange={e => setOrganization(e.target.value)}
+                />
+              </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">電子郵件 (Email)</label>
