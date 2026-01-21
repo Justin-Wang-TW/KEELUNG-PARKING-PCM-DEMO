@@ -1,4 +1,3 @@
-
 export enum TaskStatus {
   PENDING = '待處理',
   IN_PROGRESS = '執行中',
@@ -21,13 +20,13 @@ export interface Station {
 export interface Task {
   uid: string;
   stationCode: StationCode;
-  stationName: string; // Redundant but useful for UI
-  itemCode: string; // From template
+  stationName: string; 
+  itemCode: string; 
   itemName: string;
-  deadline: string; // ISO Date string
+  deadline: string; 
   status: TaskStatus;
   executorEmail: string;
-  lastUpdated: string; // ISO Timestamp
+  lastUpdated: string; 
   attachmentUrl?: string;
 }
 
@@ -35,18 +34,18 @@ export enum UserRole {
   ADMIN = '管理員',
   MANAGER = '經理',
   USER = '一般人員',
-  PENDING = '待審核', // New role for registration
+  PENDING = '待審核', 
 }
 
 export interface User {
   name: string;
   email: string;
-  password?: string; // Hashed password (or empty if not loaded for security)
-  organization?: string; // New field: Organization/Company Name
+  password?: string;        // 存儲雜湊後的密碼
+  organization?: string;    // 任職單位/所屬公司
   role: UserRole;
-  assignedStation: StationCode | 'ALL'; // 'ALL' for Admin/PM
+  assignedStation: StationCode | 'ALL';
   isActive: boolean;
-  forceChangePassword?: boolean; // New flag: true means user must change password
+  forceChangePassword?: boolean; // 是否需要強制修改密碼
 }
 
 export enum LogAction {
@@ -58,7 +57,7 @@ export enum LogAction {
   DELETE_TASK = '刪除項目',
   UPLOAD_FILE = '上傳檔案',
   RESET_PASSWORD = '重設密碼請求',
-  CHANGE_PASSWORD = '修改密碼', // Added
+  CHANGE_PASSWORD = '修改密碼', 
 }
 
 export interface AuditLog {
@@ -78,7 +77,6 @@ export interface TaskStats {
   overdue: number;
 }
 
-// Global declaration for Google Apps Script
 declare global {
   interface Window {
     google?: {
